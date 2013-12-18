@@ -6,13 +6,7 @@ Use MongoDB as a filesystem. Builded in top of Symfony2 Filesystem and Finder co
 Installation
 ------------
 
-Development version:
-
-	php composer.phar require pitpit/mongo-filesystem@dev
-
-Stable version:
-
-	php composer.phar require pitpit/mongo-filesystem
+	php composer.phar require pitpit/mongo-filesystem:1.0.*@dev
 
 License
 -------

@@ -64,6 +64,10 @@ class Filesystem extends BaseFilesystem
     {
         try {
             foreach ($this->toIterator($files) as $file) {
+                //does the parent exist ?
+                if (!$this->exists(dirname($file))) {
+                    throw new IOException(sprintf('Failed to touch %s. Parent directory does not exist.', $file));
+                }
                 $metadata = array('filename' => $file, 'mimeType' => 'application/octet-stream');
                 if ($time) {
                     $metadata['uploadDate'] = new \MongoDate($time);
@@ -97,7 +101,7 @@ class Filesystem extends BaseFilesystem
      * Get a file in MongoGridFS
      * The result is cached in memory.
      *
-     * @param string $pathname The full path filename
+     * @param string $filename The full path filename
      *
      * @return \MongoGridFS
      */
@@ -114,7 +118,7 @@ class Filesystem extends BaseFilesystem
     /**
      * Resolve pathname removing .. and . and cache it in memory
      *
-     * @param string $pathname The full path filename
+     * @param string $filename The full path filename
      *
      * @return string
      */

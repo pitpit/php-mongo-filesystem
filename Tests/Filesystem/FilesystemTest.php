@@ -2,13 +2,16 @@
 
 namespace Pitpit\Component\MongoFilesystem\Filesystem\Tests;
 
-use Symfony\Component\Filesystem\Filesystem as BaseFilesystem;
 use Pitpit\Component\MongoFilesystem\Filesystem\Filesystem;
 use Pitpit\Component\MongoFilesystem\SplFileInfo;
 use Pitpit\Component\MongoFilesystem\Tests\MongoGridTestHelper;
 
 /**
  * Test class for Filesystem.
+ *
+ * Developed from Symfony\Component\Filesystem\Filesystem part of the Symfony package
+ * and copyrighted to: (c) Fabien Potencier <fabien@symfony.com>
+ * Released under the following license: https://github.com/symfony/symfony/blob/master/LICENSE
  */
 class FilesystemTest extends \PHPUnit_Framework_TestCase
 {
@@ -23,9 +26,14 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     protected $time;
 
     /**
-     * @var boolean
+     * @var Filesystem
      */
-    protected $legacy;
+    protected $filesystem;
+
+    /**
+     * @var MongoGridFS
+     */
+    protected $gridfs;
 
     // private static $symlinkOnWindows = null;
 
@@ -45,20 +53,10 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     // }
 
 
-    /**
-     * @return Filesystem
-     */
-    protected function getFilesystem()
-    {
-        if ($this->legacy) {
-            return new BaseFilesystem();
-        } else {
-            return new Filesystem(MongoGridTestHelper::getGridFS());
-        }
-    }
-
     protected function setUp()
     {
+        $this->gridfs = MongoGridTestHelper::getGridFS();
+        $this->filesystem = new Filesystem($this->gridfs);
         $this->legacy = isset($_SERVER['LEGACY_TESTS']) ? (bool) $_SERVER['LEGACY_TESTS'] : false;
         $this->workspace = sys_get_temp_dir().DIRECTORY_SEPARATOR.uniqid();
         $this->time = time();
@@ -71,23 +69,21 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         // file_put_contents($this->workspace.'/bar/dummy.txt', 'bar');
         umask($old);
 
-        if (!$this->legacy) {
-            // MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => '/', 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-            // MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => getcwd(), 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace, 'mimeType' => mime_content_type($this->workspace)));
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace.'/bar', 'mimeType' => mime_content_type($this->workspace.'/bar')));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/foo.txt')));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/foo.txt')));
-            // MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/dummy.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/dummy.txt')));
-            $this->clean($this->workspace);
-        }
+
+        // $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => '/', 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
+        // $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => getcwd(), 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
+        $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace, 'mimeType' => mime_content_type($this->workspace)));
+        $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace.'/bar', 'mimeType' => mime_content_type($this->workspace.'/bar')));
+        $this->gridfs->storeFile($this->workspace.'/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/foo.txt')));
+        $this->gridfs->storeFile($this->workspace.'/bar/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/foo.txt')));
+        // $this->gridfs->storeFile($this->workspace.'/bar/dummy.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/dummy.txt')));
+
+        $this->clean($this->workspace);
     }
 
     protected function tearDown()
     {
-        if ($this->legacy) {
-            $this->clean($this->workspace);
-        }
+        $this->gridfs->drop();
     }
 
     /**
@@ -107,6 +103,22 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         }
     }
 
+    /**
+     * Reimp of PHPUnit_Framework_Assert::assertFileExists to use MongoDB instead of physical drive
+     *
+     * {@inheritdoc}
+     */
+    public static function assertFileExists($filepath, $message = null)
+    {
+        if (!is_string($filepath)) {
+            throw \PHPUnit_Util_InvalidArgumentHelper::factory(1, 'string');
+        }
+
+        $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
+
+        self::assertNotNull($found, $message);
+    }
+
     // public function testCopyCreatesNewFile()
     // {
     //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
@@ -114,7 +126,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     file_put_contents($sourceFilePath, 'SOURCE FILE');
 
-    //     $filesystem->copy($sourceFilePath, $targetFilePath);
+    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
     //     $this->assertFileExists($targetFilePath);
     //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
@@ -128,7 +140,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
     //     $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
-    //     $filesystem->copy($sourceFilePath, $targetFilePath);
+    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
     // }
 
     // public function testCopyOverridesExistingFileIfModified()
@@ -140,7 +152,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     file_put_contents($targetFilePath, 'TARGET FILE');
     //     touch($targetFilePath, time() - 1000);
 
-    //     $filesystem->copy($sourceFilePath, $targetFilePath);
+    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
     //     $this->assertFileExists($targetFilePath);
     //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
@@ -159,7 +171,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     touch($sourceFilePath, $modificationTime);
     //     touch($targetFilePath, $modificationTime);
 
-    //     $filesystem->copy($sourceFilePath, $targetFilePath);
+    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
     //     $this->assertFileExists($targetFilePath);
     //     $this->assertEquals('TARGET FILE', file_get_contents($targetFilePath));
@@ -178,7 +190,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     touch($sourceFilePath, $modificationTime);
     //     touch($targetFilePath, $modificationTime);
 
-    //     $filesystem->copy($sourceFilePath, $targetFilePath, true);
+    //     $this->filesystem->copy($sourceFilePath, $targetFilePath, true);
 
     //     $this->assertFileExists($targetFilePath);
     //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
@@ -192,7 +204,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     file_put_contents($sourceFilePath, 'SOURCE FILE');
 
-    //     $filesystem->copy($sourceFilePath, $targetFilePath);
+    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
     //     $this->assertTrue(is_dir($targetFileDirectory));
     //     $this->assertFileExists($targetFilePath);
@@ -205,7 +217,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //         .DIRECTORY_SEPARATOR.'directory'
     //         .DIRECTORY_SEPARATOR.'sub_directory';
 
-    //     $filesystem->mkdir($directory);
+    //     $this->filesystem->mkdir($directory);
 
     //     $this->assertTrue(is_dir($directory));
     // }
@@ -217,7 +229,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //         $basePath.'1', $basePath.'2', $basePath.'3'
     //     );
 
-    //     $filesystem->mkdir($directories);
+    //     $this->filesystem->mkdir($directories);
 
     //     $this->assertTrue(is_dir($basePath.'1'));
     //     $this->assertTrue(is_dir($basePath.'2'));
@@ -231,7 +243,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //         $basePath.'1', $basePath.'2', $basePath.'3'
     //     ));
 
-    //     $filesystem->mkdir($directories);
+    //     $this->filesystem->mkdir($directories);
 
     //     $this->assertTrue(is_dir($basePath.'1'));
     //     $this->assertTrue(is_dir($basePath.'2'));
@@ -248,19 +260,16 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     file_put_contents($dir, '');
 
-    //     $filesystem->mkdir($dir);
+    //     $this->filesystem->mkdir($dir);
     // }
 
     public function testTouchCreatesEmptyFile()
     {
-        $filesystem = $this->getFilesystem();
         $file = $this->workspace.DIRECTORY_SEPARATOR.'1';
 
-        $filesystem->touch($file);
+        $this->filesystem->touch($file);
 
-        $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $file));
-
-        $this->assertNotNull($found);
+        $this->assertFileExists($file);
     }
 
     /**
@@ -268,39 +277,38 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
      */
     public function testTouchFails()
     {
-        $filesystem = $this->getFilesystem();
         $file = $this->workspace.DIRECTORY_SEPARATOR.'1'.DIRECTORY_SEPARATOR.'2';
 
-        $filesystem->touch($file);
+        $this->filesystem->touch($file);
     }
 
-    // public function testTouchCreatesEmptyFilesFromArray()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
-    //     $files = array(
-    //         $basePath.'1', $basePath.'2', $basePath.'3'
-    //     );
+    public function testTouchCreatesEmptyFilesFromArray()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $files = array(
+            $basePath.'1', $basePath.'2', $basePath.'3'
+        );
 
-    //     $filesystem->touch($files);
+        $this->filesystem->touch($files);
 
-    //     $this->assertFileExists($basePath.'1');
-    //     $this->assertFileExists($basePath.'2');
-    //     $this->assertFileExists($basePath.'3');
-    // }
+        $this->assertFileExists($basePath.'1');
+        $this->assertFileExists($basePath.'2');
+        $this->assertFileExists($basePath.'3');
+    }
 
-    // public function testTouchCreatesEmptyFilesFromTraversableObject()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
-    //     $files = new \ArrayObject(array(
-    //         $basePath.'1', $basePath.'2', $basePath.'3'
-    //     ));
+    public function testTouchCreatesEmptyFilesFromTraversableObject()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $files = new \ArrayObject(array(
+            $basePath.'1', $basePath.'2', $basePath.'3'
+        ));
 
-    //     $filesystem->touch($files);
+        $this->filesystem->touch($files);
 
-    //     $this->assertFileExists($basePath.'1');
-    //     $this->assertFileExists($basePath.'2');
-    //     $this->assertFileExists($basePath.'3');
-    // }
+        $this->assertFileExists($basePath.'1');
+        $this->assertFileExists($basePath.'2');
+        $this->assertFileExists($basePath.'3');
+    }
 
     // public function testRemoveCleansFilesAndDirectoriesIteratively()
     // {
@@ -310,7 +318,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     mkdir($basePath.'dir');
     //     touch($basePath.'file');
 
-    //     $filesystem->remove($basePath);
+    //     $this->filesystem->remove($basePath);
 
     //     $this->assertTrue(!is_dir($basePath));
     // }
@@ -326,7 +334,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //         $basePath.'dir', $basePath.'file'
     //     );
 
-    //     $filesystem->remove($files);
+    //     $this->filesystem->remove($files);
 
     //     $this->assertTrue(!is_dir($basePath.'dir'));
     //     $this->assertTrue(!is_file($basePath.'file'));
@@ -343,7 +351,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //         $basePath.'dir', $basePath.'file'
     //     ));
 
-    //     $filesystem->remove($files);
+    //     $this->filesystem->remove($files);
 
     //     $this->assertTrue(!is_dir($basePath.'dir'));
     //     $this->assertTrue(!is_file($basePath.'file'));
@@ -359,7 +367,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //         $basePath.'dir', $basePath.'file'
     //     );
 
-    //     $filesystem->remove($files);
+    //     $this->filesystem->remove($files);
 
     //     $this->assertTrue(!is_dir($basePath.'dir'));
     // }
@@ -375,42 +383,38 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     // create symlink to unexisting file
     //     @symlink($basePath.'file', $basePath.'link');
 
-    //     $filesystem->remove($basePath);
+    //     $this->filesystem->remove($basePath);
 
     //     $this->assertTrue(!is_dir($basePath));
     // }
 
     public function testFilesExists()
     {
-        $filesystem = $this->getFilesystem();
-        $this->assertTrue($filesystem->exists($this->workspace.'/foo.txt'));
-        $this->assertTrue($filesystem->exists($this->workspace.'/bar'));
+        $this->assertTrue($this->filesystem->exists($this->workspace.'/foo.txt'));
+        $this->assertTrue($this->filesystem->exists($this->workspace.'/bar'));
     }
 
     public function testFilesExistsTraversableObjectOfFilesAndDirectories()
     {
-        $filesystem = $this->getFilesystem();
         $files = new \ArrayObject(array(
             $this->workspace.'/bar', $this->workspace.'/foo.txt'
         ));
 
-        $this->assertTrue($filesystem->exists($files));
+        $this->assertTrue($this->filesystem->exists($files));
     }
 
     public function testFilesNotExistsTraversableObjectOfFilesAndDirectories()
     {
-        $filesystem = $this->getFilesystem();
         $files = new \ArrayObject(array(
             $this->workspace.'/bar', $this->workspace.'/foo.txt', $this->workspace.'/unknown.txt'
         ));
 
-        $this->assertFalse($filesystem->exists($files));
+        $this->assertFalse($this->filesystem->exists($files));
     }
 
     public function testInvalidFileNotExists()
     {
-        $filesystem = $this->getFilesystem();
-        $this->assertFalse($filesystem->exists($this->workspace.'/unknown.txt'));
+        $this->assertFalse($this->filesystem->exists($this->workspace.'/unknown.txt'));
     }
 
     // public function testChmodChangesFileMode()
@@ -422,8 +426,8 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $file = $dir.DIRECTORY_SEPARATOR.'file';
     //     touch($file);
 
-    //     $filesystem->chmod($file, 0400);
-    //     $filesystem->chmod($dir, 0753);
+    //     $this->filesystem->chmod($file, 0400);
+    //     $this->filesystem->chmod($dir, 0753);
 
     //     $this->assertEquals(753, $this->getFilePermissions($dir));
     //     $this->assertEquals(400, $this->getFilePermissions($file));
@@ -436,7 +440,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $dir = $this->workspace.DIRECTORY_SEPARATOR.'file';
     //     touch($dir);
 
-    //     $filesystem->chmod($dir, 'Wrongmode');
+    //     $this->filesystem->chmod($dir, 'Wrongmode');
     // }
 
     // public function testChmodRecursive()
@@ -448,8 +452,8 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $file = $dir.DIRECTORY_SEPARATOR.'file';
     //     touch($file);
 
-    //     $filesystem->chmod($file, 0400, 0000, true);
-    //     $filesystem->chmod($dir, 0753, 0000, true);
+    //     $this->filesystem->chmod($file, 0400, 0000, true);
+    //     $this->filesystem->chmod($dir, 0753, 0000, true);
 
     //     $this->assertEquals(753, $this->getFilePermissions($dir));
     //     $this->assertEquals(753, $this->getFilePermissions($file));
@@ -462,7 +466,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $file = $this->workspace.DIRECTORY_SEPARATOR.'file';
     //     touch($file);
 
-    //     $filesystem->chmod($file, 0770, 0022);
+    //     $this->filesystem->chmod($file, 0770, 0022);
     //     $this->assertEquals(750, $this->getFilePermissions($file));
     // }
 
@@ -477,7 +481,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     mkdir($directory);
     //     touch($file);
 
-    //     $filesystem->chmod($files, 0753);
+    //     $this->filesystem->chmod($files, 0753);
 
     //     $this->assertEquals(753, $this->getFilePermissions($file));
     //     $this->assertEquals(753, $this->getFilePermissions($directory));
@@ -494,7 +498,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     mkdir($directory);
     //     touch($file);
 
-    //     $filesystem->chmod($files, 0753);
+    //     $this->filesystem->chmod($files, 0753);
 
     //     $this->assertEquals(753, $this->getFilePermissions($file));
     //     $this->assertEquals(753, $this->getFilePermissions($directory));
@@ -507,7 +511,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $dir = $this->workspace.DIRECTORY_SEPARATOR.'dir';
     //     mkdir($dir);
 
-    //     $filesystem->chown($dir, $this->getFileOwner($dir));
+    //     $this->filesystem->chown($dir, $this->getFileOwner($dir));
     // }
 
     // public function testChownRecursive()
@@ -519,7 +523,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $file = $dir.DIRECTORY_SEPARATOR.'file';
     //     touch($file);
 
-    //     $filesystem->chown($dir, $this->getFileOwner($dir), true);
+    //     $this->filesystem->chown($dir, $this->getFileOwner($dir), true);
     // }
 
     // public function testChownSymlink()
@@ -531,9 +535,9 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     touch($file);
 
-    //     $filesystem->symlink($file, $link);
+    //     $this->filesystem->symlink($file, $link);
 
-    //     $filesystem->chown($link, $this->getFileOwner($link));
+    //     $this->filesystem->chown($link, $this->getFileOwner($link));
     // }
 
     // /**
@@ -548,9 +552,9 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     touch($file);
 
-    //     $filesystem->symlink($file, $link);
+    //     $this->filesystem->symlink($file, $link);
 
-    //     $filesystem->chown($link, 'user'.time().mt_rand(1000, 9999));
+    //     $this->filesystem->chown($link, 'user'.time().mt_rand(1000, 9999));
     // }
 
     // /**
@@ -563,7 +567,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $dir = $this->workspace.DIRECTORY_SEPARATOR.'dir';
     //     mkdir($dir);
 
-    //     $filesystem->chown($dir, 'user'.time().mt_rand(1000, 9999));
+    //     $this->filesystem->chown($dir, 'user'.time().mt_rand(1000, 9999));
     // }
 
     // public function testChgrp()
@@ -573,7 +577,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $dir = $this->workspace.DIRECTORY_SEPARATOR.'dir';
     //     mkdir($dir);
 
-    //     $filesystem->chgrp($dir, $this->getFileGroup($dir));
+    //     $this->filesystem->chgrp($dir, $this->getFileGroup($dir));
     // }
 
     // public function testChgrpRecursive()
@@ -585,7 +589,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $file = $dir.DIRECTORY_SEPARATOR.'file';
     //     touch($file);
 
-    //     $filesystem->chgrp($dir, $this->getFileGroup($dir), true);
+    //     $this->filesystem->chgrp($dir, $this->getFileGroup($dir), true);
     // }
 
     // public function testChgrpSymlink()
@@ -597,9 +601,9 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     touch($file);
 
-    //     $filesystem->symlink($file, $link);
+    //     $this->filesystem->symlink($file, $link);
 
-    //     $filesystem->chgrp($link, $this->getFileGroup($link));
+    //     $this->filesystem->chgrp($link, $this->getFileGroup($link));
     // }
 
     // /**
@@ -614,9 +618,9 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     touch($file);
 
-    //     $filesystem->symlink($file, $link);
+    //     $this->filesystem->symlink($file, $link);
 
-    //     $filesystem->chgrp($link, 'user'.time().mt_rand(1000, 9999));
+    //     $this->filesystem->chgrp($link, 'user'.time().mt_rand(1000, 9999));
     // }
 
     // /**
@@ -629,7 +633,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $dir = $this->workspace.DIRECTORY_SEPARATOR.'dir';
     //     mkdir($dir);
 
-    //     $filesystem->chgrp($dir, 'user'.time().mt_rand(1000, 9999));
+    //     $this->filesystem->chgrp($dir, 'user'.time().mt_rand(1000, 9999));
     // }
 
     // public function testRename()
@@ -638,7 +642,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
     //     touch($file);
 
-    //     $filesystem->rename($file, $newPath);
+    //     $this->filesystem->rename($file, $newPath);
 
     //     $this->assertFileNotExists($file);
     //     $this->assertFileExists($newPath);
@@ -655,7 +659,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     touch($file);
     //     touch($newPath);
 
-    //     $filesystem->rename($file, $newPath);
+    //     $this->filesystem->rename($file, $newPath);
     // }
 
     // public function testRenameOverwritesTheTargetIfItAlreadyExists()
@@ -666,7 +670,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     touch($file);
     //     touch($newPath);
 
-    //     $filesystem->rename($file, $newPath, true);
+    //     $this->filesystem->rename($file, $newPath, true);
 
     //     $this->assertFileNotExists($file);
     //     $this->assertFileExists($newPath);
@@ -680,7 +684,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $file = $this->workspace.DIRECTORY_SEPARATOR.uniqid();
     //     $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
 
-    //     $filesystem->rename($file, $newPath);
+    //     $this->filesystem->rename($file, $newPath);
     // }
 
     // public function testSymlink()
@@ -692,7 +696,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     touch($file);
 
-    //     $filesystem->symlink($file, $link);
+    //     $this->filesystem->symlink($file, $link);
 
     //     $this->assertTrue(is_link($link));
     //     $this->assertEquals($file, readlink($link));
@@ -707,7 +711,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     $link = $this->workspace.DIRECTORY_SEPARATOR.'link';
 
-    //     $filesystem->remove($link);
+    //     $this->filesystem->remove($link);
 
     //     $this->assertTrue(!is_link($link));
     // }
@@ -722,7 +726,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     touch($file);
     //     symlink($this->workspace, $link);
 
-    //     $filesystem->symlink($file, $link);
+    //     $this->filesystem->symlink($file, $link);
 
     //     $this->assertTrue(is_link($link));
     //     $this->assertEquals($file, readlink($link));
@@ -738,7 +742,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     touch($file);
     //     symlink($file, $link);
 
-    //     $filesystem->symlink($file, $link);
+    //     $this->filesystem->symlink($file, $link);
 
     //     $this->assertTrue(is_link($link));
     //     $this->assertEquals($file, readlink($link));
@@ -754,8 +758,8 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     touch($file);
 
-    //     $filesystem->symlink($file, $link1);
-    //     $filesystem->symlink($file, $link2);
+    //     $this->filesystem->symlink($file, $link1);
+    //     $this->filesystem->symlink($file, $link2);
 
     //     $this->assertTrue(is_link($link1));
     //     $this->assertEquals($file, readlink($link1));
@@ -768,7 +772,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //  */
     // public function testMakePathRelative($endPath, $startPath, $expectedPath)
     // {
-    //     $path = $filesystem->makePathRelative($endPath, $startPath);
+    //     $path = $this->filesystem->makePathRelative($endPath, $startPath);
 
     //     $this->assertEquals($expectedPath, $path);
     // }
@@ -825,30 +829,30 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     $targetPath = $this->workspace.DIRECTORY_SEPARATOR.'target'.DIRECTORY_SEPARATOR;
 
-    //     $filesystem->mirror($sourcePath, $targetPath);
+    //     $this->filesystem->mirror($sourcePath, $targetPath);
 
     //     $this->assertTrue(is_dir($targetPath));
     //     $this->assertTrue(is_dir($targetPath.'directory'));
     //     $this->assertFileEquals($file1, $targetPath.'directory'.DIRECTORY_SEPARATOR.'file1');
     //     $this->assertFileEquals($file2, $targetPath.'file2');
 
-    //     $filesystem->remove($file1);
+    //     $this->filesystem->remove($file1);
 
-    //     $filesystem->mirror($sourcePath, $targetPath, null, array('delete' => false));
-    //     $this->assertTrue($filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
+    //     $this->filesystem->mirror($sourcePath, $targetPath, null, array('delete' => false));
+    //     $this->assertTrue($this->filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
 
-    //     $filesystem->mirror($sourcePath, $targetPath, null, array('delete' => true));
-    //     $this->assertFalse($filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
+    //     $this->filesystem->mirror($sourcePath, $targetPath, null, array('delete' => true));
+    //     $this->assertFalse($this->filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
 
     //     file_put_contents($file1, 'FILE1');
 
-    //     $filesystem->mirror($sourcePath, $targetPath, null, array('delete' => true));
-    //     $this->assertTrue($filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
+    //     $this->filesystem->mirror($sourcePath, $targetPath, null, array('delete' => true));
+    //     $this->assertTrue($this->filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
 
-    //     $filesystem->remove($directory);
-    //     $filesystem->mirror($sourcePath, $targetPath, null, array('delete' => true));
-    //     $this->assertFalse($filesystem->exists($targetPath.'directory'));
-    //     $this->assertFalse($filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
+    //     $this->filesystem->remove($directory);
+    //     $this->filesystem->mirror($sourcePath, $targetPath, null, array('delete' => true));
+    //     $this->assertFalse($this->filesystem->exists($targetPath.'directory'));
+    //     $this->assertFalse($this->filesystem->exists($targetPath.'directory'.DIRECTORY_SEPARATOR.'file1'));
     // }
 
     // public function testMirrorCopiesLinks()
@@ -863,7 +867,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     $targetPath = $this->workspace.DIRECTORY_SEPARATOR.'target'.DIRECTORY_SEPARATOR;
 
-    //     $filesystem->mirror($sourcePath, $targetPath);
+    //     $this->filesystem->mirror($sourcePath, $targetPath);
 
     //     $this->assertTrue(is_dir($targetPath));
     //     $this->assertFileEquals($sourcePath.'file1', $targetPath.DIRECTORY_SEPARATOR.'link1');
@@ -883,7 +887,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     //     $targetPath = $this->workspace.DIRECTORY_SEPARATOR.'target'.DIRECTORY_SEPARATOR;
 
-    //     $filesystem->mirror($sourcePath, $targetPath);
+    //     $this->filesystem->mirror($sourcePath, $targetPath);
 
     //     $this->assertTrue(is_dir($targetPath));
     //     $this->assertFileEquals($sourcePath.'/nested/file1.txt', $targetPath.DIRECTORY_SEPARATOR.'link1/file1.txt');
@@ -895,7 +899,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //  */
     // public function testIsAbsolutePath($path, $expectedResult)
     // {
-    //     $result = $filesystem->isAbsolutePath($path);
+    //     $result = $this->filesystem->isAbsolutePath($path);
 
     //     $this->assertEquals($expectedResult, $result);
     // }
@@ -920,7 +924,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     // {
     //     $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo'.DIRECTORY_SEPARATOR.'baz.txt';
 
-    //     $filesystem->dumpFile($filename, 'bar', 0753);
+    //     $this->filesystem->dumpFile($filename, 'bar', 0753);
 
     //     $this->assertFileExists($filename);
     //     $this->assertSame('bar', file_get_contents($filename));
@@ -936,7 +940,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo.txt';
     //     file_put_contents($filename, 'FOO BAR');
 
-    //     $filesystem->dumpFile($filename, 'bar');
+    //     $this->filesystem->dumpFile($filename, 'bar');
 
     //     $this->assertFileExists($filename);
     //     $this->assertSame('bar', file_get_contents($filename));

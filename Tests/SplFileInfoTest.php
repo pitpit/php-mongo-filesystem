@@ -24,6 +24,11 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
     protected $legacy;
 
     /**
+     * @var MongoGridFS
+     */
+    protected $gridfs;
+
+    /**
      * Get a SplFilInfo
      *
      * @param string $filename The full filepath
@@ -35,7 +40,7 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
         if ($this->legacy) {
             return new \SplFileInfo($filename);
         } else {
-            return new SplFileInfo($filename, MongoGridTestHelper::getGridFS());
+            return new SplFileInfo($filename, $this->gridfs);
         }
     }
 
@@ -54,13 +59,14 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
         umask($old);
 
         if (!$this->legacy) {
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => '/', 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => getcwd(), 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace, 'mimeType' => mime_content_type($this->workspace)));
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace.'/bar', 'mimeType' => mime_content_type($this->workspace.'/bar')));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/foo.txt')));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/foo.txt')));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/dummy.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/dummy.txt')));
+            $this->gridfs = MongoGridTestHelper::getGridFS();
+            $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => '/', 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
+            $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => getcwd(), 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
+            $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace, 'mimeType' => mime_content_type($this->workspace)));
+            $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace.'/bar', 'mimeType' => mime_content_type($this->workspace.'/bar')));
+            $this->gridfs->storeFile($this->workspace.'/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/foo.txt')));
+            $this->gridfs->storeFile($this->workspace.'/bar/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/foo.txt')));
+            $this->gridfs->storeFile($this->workspace.'/bar/dummy.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/dummy.txt')));
             $this->clean($this->workspace);
         }
     }
@@ -69,6 +75,8 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
     {
         if ($this->legacy) {
             $this->clean($this->workspace);
+        } else {
+            $this->gridfs->drop();
         }
     }
 
