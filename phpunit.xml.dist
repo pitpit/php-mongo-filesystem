@@ -20,6 +20,8 @@
     <php>
         <!-- Set LEGACY to 1 if you want to run the tests agains native filesystem (on disk) -->
         <!--<server name="LEGACY_TESTS" value="1" />-->
+        <!--<server name="MONGO_SERVER" value="mongodb://localhost:27017" />-->
+        <!--<server name="MONGO_DB" value="mongo-filesystem-test" />-->
     </php>
 
     <filter>
