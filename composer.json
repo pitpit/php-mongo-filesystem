@@ -1,0 +1,21 @@
+{
+    "name": "pitpit/mongo-filesystem",
+    "description": "Use MongoDB as a filesystem.",
+    "license": "BSD-3-Clause",
+    "require": {
+        "php": ">=5.3.3",
+        "ext-mongo": ">=1.4.3",
+        "symfony/finder": "2.3.*",
+        "symfony/filesystem": "2.3.*"
+    },
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-0": { "Pitpit\\Component\\MongoFilesystem": "" }
+    },
+    "target-dir": "Pitpit/Component/MongoFilesystem",
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0.x-dev"
+        }
+    }
+}
