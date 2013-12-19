@@ -3,7 +3,6 @@
 namespace Pitpit\Component\MongoFilesystem\Filesystem\Tests;
 
 use Pitpit\Component\MongoFilesystem\Filesystem\Filesystem;
-use Pitpit\Component\MongoFilesystem\SplFileInfo;
 use Pitpit\Component\MongoFilesystem\Tests\MongoGridTestHelper;
 
 /**
@@ -42,7 +41,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $this->workspace = sys_get_temp_dir().DIRECTORY_SEPARATOR.uniqid();
         $this->time = time();
 
-        $this->gridfs->storeBytes('', array('filename' => $this->workspace, 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace, 'type' => 'dir'));
     }
 
     protected function tearDown()
@@ -77,7 +76,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
 
         self::assertNotNull($found);
-        self::assertEquals('directory', $found->file['mimeType'], $message);
+        self::assertEquals('dir', $found->file['type'], $message);
     }
 
     public function testCopyCreatesNewFile()
@@ -86,7 +85,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
 
-        $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'mimeType' => 'text/plain'));
+        $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'type' => 'file'));
 
         $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
@@ -364,8 +363,8 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     public function testFilesExists()
     {
-        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'mimeType' => 'text/plain'));
-        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'mimeType' => 'directory'));
+        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'type' => 'file'));
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'type' => 'dir'));
 
         $this->assertTrue($this->filesystem->exists($this->workspace.'/file1'));
         $this->assertTrue($this->filesystem->exists($this->workspace.'/folder'));
@@ -373,8 +372,8 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     public function testFilesExistsTraversableObjectOfFilesAndDirectories()
     {
-        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'mimeType' => 'text/plain'));
-        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'mimeType' => 'directory'));
+        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'type' => 'file'));
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'type' => 'dir'));
 
         $files = new \ArrayObject(array(
             $this->workspace.'/folder', $this->workspace.'/file1'
@@ -385,8 +384,8 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     public function testFilesNotExistsTraversableObjectOfFilesAndDirectories()
     {
-        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'mimeType' => 'text/plain'));
-        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'mimeType' => 'directory'));
+        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'type' => 'file'));
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'type' => 'dir'));
 
         $files = new \ArrayObject(array(
             $this->workspace.'/folder', $this->workspace.'/file1', $this->workspace.'/unknown'

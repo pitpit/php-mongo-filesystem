@@ -10,8 +10,6 @@ namespace Pitpit\Component\MongoFilesystem;
  */
 class SplFileInfo extends \SplFileInfo
 {
-    const FOLDER_MIMETYPE = 'directory';
-
     /**
      * @var MongoId
      */
@@ -158,7 +156,7 @@ class SplFileInfo extends \SplFileInfo
             return false;
         }
 
-        return (self::FOLDER_MIMETYPE === $this->getDocument()->file['mimeType']);
+        return ('dir' === $this->getDocument()->file['type']);
     }
 
     /**
@@ -171,7 +169,7 @@ class SplFileInfo extends \SplFileInfo
             return false;
         }
 
-        return (self::FOLDER_MIMETYPE !== $this->getDocument()->file['mimeType']);
+        return ('file' === $this->getDocument()->file['type']);
     }
 
     /**
@@ -243,19 +241,7 @@ class SplFileInfo extends \SplFileInfo
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
-        return $this->isDir()?'dir':'file';
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getMimeType()
-    {
-        if (!$this->exists()) {
-            throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
-        }
-
-        return $this->getDocument()->file['mimeType'];
+        return $this->getDocument()->file['type'];
     }
 
     /**

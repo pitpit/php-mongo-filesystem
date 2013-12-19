@@ -6,7 +6,6 @@ use Symfony\Component\Filesystem\Filesystem as BaseFilesystem;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Pitpit\Component\MongoFilesystem\SplFileInfo;
 
-
 /**
  * Queries files from MongoDB
  *
@@ -71,7 +70,7 @@ class Filesystem extends BaseFilesystem
                 }
 
                 $file = new SplFileInfo($filepath, $this->fs);
-                $metadata = array('filename' => $file->getResolvedPath(), 'mimeType' => 'application/octet-stream');
+                $metadata = array('filename' => $file->getResolvedPath(), 'type' => 'file');
                 if ($time) {
                     $metadata['uploadDate'] = new \MongoDate($time);
                 }
@@ -106,7 +105,7 @@ class Filesystem extends BaseFilesystem
                     $this->mkdir(dirname($dir), $mode);
                 }
 
-                $this->fs->storeBytes('', array('filename' => $file->getResolvedPath(), 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
+                $this->fs->storeBytes('', array('filename' => $file->getResolvedPath(), 'type' => 'dir'));
             }
         } catch (\MongoCursorException $e) {
             throw new IOException(sprintf('Failed to create %s', $dir));

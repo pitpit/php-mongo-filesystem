@@ -33,11 +33,11 @@ class SplFileObject extends SplFileInfo
         } else if ('w' === $mode || 'w+' === $mode) {
             if (!$this->exists()) {
                 // If the file does not exist, attempt to create it.
-                $this->fs->storeBytes('', array('filename' => $this->getResolvedPath()));
+                $this->fs->storeBytes('', array('filename' => $this->getResolvedPath(), 'type' => 'file'));
             } else {
                 //truncate the file to zero length
                 $file = $this->getDocument();
-                $this->fs->storeBytes('', array('_id' => $this->file->file['_id']));
+                $this->fs->storeBytes('', array('_id' => $this->file->file['_id'], 'type' => 'file'));
 
                 // $this->fs->put($filename);
                 //$this->fs->storeBytes('', array('_id' => $this->file->file['_id']));
