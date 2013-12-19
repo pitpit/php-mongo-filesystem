@@ -1,7 +1,8 @@
 PHP Mongo Filesystem
 ====================
 
-Use MongoDB as a filesystem. Builded in top of Symfony2 Filesystem and Finder components.
+Use MongoDB as a filesystem.
+Builded in top of SplFileInfo, Symfony2 Filesystem component and Symfony2 Finder components for a better integration.
 
 Installation
 ------------
