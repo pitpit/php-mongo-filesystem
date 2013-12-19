@@ -113,10 +113,23 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         if (!is_string($filepath)) {
             throw \PHPUnit_Util_InvalidArgumentHelper::factory(1, 'string');
         }
-
         $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
 
         self::assertNotNull($found, $message);
+    }
+
+    /**
+     * Test  over MongoDB if $filepath is a directory
+     */
+    public static function assertIsDir($filepath, $message = null)
+    {
+        if (!is_string($filepath)) {
+            throw \PHPUnit_Util_InvalidArgumentHelper::factory(1, 'string');
+        }
+        $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
+
+        self::assertNotNull($found);
+        self::assertEquals('directory', $found->file['mimeType'], $message);
     }
 
     // public function testCopyCreatesNewFile()
@@ -211,57 +224,54 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
     // }
 
-    // public function testMkdirCreatesDirectoriesRecursively()
-    // {
-    //     $directory = $this->workspace
-    //         .DIRECTORY_SEPARATOR.'directory'
-    //         .DIRECTORY_SEPARATOR.'sub_directory';
+    public function testMkdirCreatesDirectoriesRecursively()
+    {
+        $this->filesystem->mkdir($this->workspace.DIRECTORY_SEPARATOR.'directory'.DIRECTORY_SEPARATOR.'sub_directory');
 
-    //     $this->filesystem->mkdir($directory);
+        $this->assertIsDir($this->workspace.DIRECTORY_SEPARATOR.'directory');
+        $this->assertIsDir($this->workspace.DIRECTORY_SEPARATOR.'directory'.DIRECTORY_SEPARATOR.'sub_directory');
+    }
 
-    //     $this->assertTrue(is_dir($directory));
-    // }
+    public function testMkdirCreatesDirectoriesFromArray()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $directories = array(
+            $basePath.'1', $basePath.'2', $basePath.'3'
+        );
 
-    // public function testMkdirCreatesDirectoriesFromArray()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
-    //     $directories = array(
-    //         $basePath.'1', $basePath.'2', $basePath.'3'
-    //     );
+        $this->filesystem->mkdir($directories);
 
-    //     $this->filesystem->mkdir($directories);
+        $this->assertIsDir($basePath.'1');
+        $this->assertIsDir($basePath.'2');
+        $this->assertIsDir($basePath.'3');
+    }
 
-    //     $this->assertTrue(is_dir($basePath.'1'));
-    //     $this->assertTrue(is_dir($basePath.'2'));
-    //     $this->assertTrue(is_dir($basePath.'3'));
-    // }
+    public function testMkdirCreatesDirectoriesFromTraversableObject()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $directories = new \ArrayObject(array(
+            $basePath.'1', $basePath.'2', $basePath.'3'
+        ));
 
-    // public function testMkdirCreatesDirectoriesFromTraversableObject()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
-    //     $directories = new \ArrayObject(array(
-    //         $basePath.'1', $basePath.'2', $basePath.'3'
-    //     ));
+        $this->filesystem->mkdir($directories);
 
-    //     $this->filesystem->mkdir($directories);
+        $this->assertIsDir($basePath.'1');
+        $this->assertIsDir($basePath.'2');
+        $this->assertIsDir($basePath.'3');
+    }
 
-    //     $this->assertTrue(is_dir($basePath.'1'));
-    //     $this->assertTrue(is_dir($basePath.'2'));
-    //     $this->assertTrue(is_dir($basePath.'3'));
-    // }
+    /**
+     * @expectedException \Symfony\Component\Filesystem\Exception\IOException
+     */
+    public function testMkdirCreatesDirectoriesFails()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $dir = $basePath.'2';
 
-    // /**
-    //  * @expectedException \Symfony\Component\Filesystem\Exception\IOException
-    //  */
-    // public function testMkdirCreatesDirectoriesFails()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
-    //     $dir = $basePath.'2';
+        $this->filesystem->touch($dir);
 
-    //     file_put_contents($dir, '');
-
-    //     $this->filesystem->mkdir($dir);
-    // }
+        $this->filesystem->mkdir($dir);
+    }
 
     public function testTouchCreatesEmptyFile()
     {

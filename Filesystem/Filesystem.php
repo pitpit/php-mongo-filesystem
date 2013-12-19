@@ -4,6 +4,7 @@ namespace Pitpit\Component\MongoFilesystem\Filesystem;
 
 use Symfony\Component\Filesystem\Filesystem as BaseFilesystem;
 use Symfony\Component\Filesystem\Exception\IOException;
+use Pitpit\Component\MongoFilesystem\SplFileInfo;
 
 
 /**
@@ -42,8 +43,8 @@ class Filesystem extends BaseFilesystem
     public function exists($files)
     {
         foreach ($this->toIterator($files) as $file) {
-            $document = $this->getDocument($file);
-            if (!$document) {
+            $file = new SplFileInfo($file, $this->fs);
+            if (!$file->exists()) {
                 return false;
             }
         }
@@ -63,12 +64,14 @@ class Filesystem extends BaseFilesystem
     public function touch($files, $time = null, $atime = null)
     {
         try {
-            foreach ($this->toIterator($files) as $file) {
-                //does the parent exist ?
-                if (!$this->exists(dirname($file))) {
-                    throw new IOException(sprintf('Failed to touch %s. Parent directory does not exist.', $file));
+            foreach ($this->toIterator($files) as $filepath) {
+                $parent = new SplFileInfo(dirname($filepath), $this->fs);
+                if (!$parent->exists()) {
+                    throw new IOException(sprintf('Failed to touch %s. Parent directory does not exist.', $filepath));
                 }
-                $metadata = array('filename' => $file, 'mimeType' => 'application/octet-stream');
+
+                $file = new SplFileInfo($filepath, $this->fs);
+                $metadata = array('filename' => $file->getResolvedPath(), 'mimeType' => 'application/octet-stream');
                 if ($time) {
                     $metadata['uploadDate'] = new \MongoDate($time);
                 }
@@ -76,6 +79,39 @@ class Filesystem extends BaseFilesystem
             }
         } catch (\MongoCursorException $e) {
             throw new IOException(sprintf('Failed to touch %s', $file));
+        }
+    }
+
+    /**
+     * Creates a directory recursively.
+     *
+     * @param string|array|\Traversable $dirs The directory path
+     * @param integer                   $mode The directory mode
+     *
+     * @throws IOException On any directory creation failure
+     */
+    public function mkdir($dirs, $mode = 0777)
+    {
+        try {
+            foreach ($this->toIterator($dirs) as $dir) {
+                $file = new SplFileInfo($dir, $this->fs);
+                if ($file->exists()) {
+                    if ($file->isDir()) {
+                        continue;
+                    } else {
+                        throw new IOException(sprintf('Failed to create %s', $dir));
+                    }
+                }
+
+                $parent = new SplFileInfo(dirname($dir), $this->fs);
+                if (!$parent->exists()) {
+                    $this->mkdir(dirname($dir), $mode);
+                }
+
+                $this->fs->storeBytes('', array('filename' => $file->getResolvedPath(), 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
+            }
+        } catch (\MongoCursorException $e) {
+            throw new IOException(sprintf('Failed to create %s', $dir));
         }
     }
 
@@ -91,63 +127,63 @@ class Filesystem extends BaseFilesystem
         }
 
         foreach ($files as $key => $file) {
-            $files[$key] = $this->getResolvedPath($file);
+            $files[$key] =  $file;//$this->getResolvedPath($file);
         }
 
         return $files;
     }
 
-    /**
-     * Get a file in MongoGridFS
-     * The result is cached in memory.
-     *
-     * @param string $filename The full path filename
-     *
-     * @return \MongoGridFS
-     */
-    protected function getDocument($filename)
-    {
-        $filename = $this->getResolvedPath($filename);
-        if (!isset($this->cache['document'][$filename])) {
-            $this->cache['document'][$filename] = $this->fs->findOne(array('filename' => $filename));
-        }
+    // /**
+    //  * Get a file in MongoGridFS
+    //  * The result is cached in memory.
+    //  *
+    //  * @param string $filepath The full path filename
+    //  *
+    //  * @return \MongoGridFS
+    //  */
+    // protected function getDocument($filepath)
+    // {
+    //     $filepath = $this->getResolvedPath($filepath);
+    //     if (!isset($this->cache['document'][$filepath])) {
+    //         $this->cache['document'][$filepath] = $this->fs->findOne(array('filename' => $filepath));
+    //     }
 
-        return $this->cache['document'][$filename];
-    }
+    //     return $this->cache['document'][$filepath];
+    // }
 
-    /**
-     * Resolve pathname removing .. and . and cache it in memory
-     *
-     * @param string $filename The full path filename
-     *
-     * @return string
-     */
-    protected function getResolvedPath($filename)
-    {
-        if (!isset($this->cache['resolved_path'][$filename])) {
-            $parts = explode('/', $filename);
-            $parents = array();
-            foreach ($parts as $dir) {
-                switch($dir) {
-                    case '.':
-                        break;
-                    case '..':
-                        array_pop($parents);
-                        break;
-                    default:
-                        $parents[] = $dir;
-                        break;
-                }
-            }
+    // /**
+    //  * Resolve pathname removing .. and . and cache it in memory
+    //  *
+    //  * @param string $filepath The full path filename
+    //  *
+    //  * @return string
+    //  */
+    // protected function getResolvedPath($filepath)
+    // {
+    //     if (!isset($this->cache['resolved_path'][$filepath])) {
+    //         $parts = explode('/', $filepath);
+    //         $parents = array();
+    //         foreach ($parts as $dir) {
+    //             switch($dir) {
+    //                 case '.':
+    //                     break;
+    //                 case '..':
+    //                     array_pop($parents);
+    //                     break;
+    //                 default:
+    //                     $parents[] = $dir;
+    //                     break;
+    //             }
+    //         }
 
-            $pathname = implode('/', $parents);
-            if ('' === $pathname) {
-                $pathname = getcwd();
-            }
+    //         $pathname = implode('/', $parents);
+    //         if ('' === $pathname) {
+    //             $pathname = getcwd();
+    //         }
 
-            $this->cache['resolved_path'][$filename] = $pathname;
-        }
+    //         $this->cache['resolved_path'][$filepath] = $pathname;
+    //     }
 
-        return $this->cache['resolved_path'][$filename];
-    }
+    //     return $this->cache['resolved_path'][$filepath];
+    // }
 }

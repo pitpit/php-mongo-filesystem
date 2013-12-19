@@ -44,7 +44,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getRealPath()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             return false;
         }
 
@@ -60,7 +60,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getPerms()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -80,7 +80,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function isReadable()
     {
-        return $this->hasDocument();
+        return $this->exists();
     }
 
     /**
@@ -88,7 +88,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function isWritable()
     {
-        return $this->hasDocument();
+        return $this->exists();
     }
 
     /**
@@ -105,7 +105,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function isDir()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
 
             return false;
         }
@@ -118,7 +118,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function isFile()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
 
             return false;
         }
@@ -142,7 +142,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getMTime()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -175,7 +175,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getLinkTarget()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -191,7 +191,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getType()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -203,7 +203,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getMimeType()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -215,7 +215,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getSize()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -229,7 +229,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getOwner()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -243,7 +243,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getGroup()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -257,7 +257,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function getInode()
     {
-        if (!$this->hasDocument()) {
+        if (!$this->exists()) {
             throw new \RuntimeException(sprintf('File "%s" does not exist.', $this->getPathname()));
         }
 
@@ -313,7 +313,7 @@ class SplFileInfo extends \SplFileInfo
      *
      * @return \MongoGridFS
      */
-    protected function hasDocument()
+    public function exists()
     {
         return (null !== $this->getDocument());
     }
@@ -323,7 +323,7 @@ class SplFileInfo extends \SplFileInfo
      *
      * @return string
      */
-    protected function getResolvedPath()
+    public function getResolvedPath()
     {
         if (!isset($this->cache['resolved_path'])) {
             $pathname = $this->getPathname();
