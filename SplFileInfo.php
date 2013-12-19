@@ -18,6 +18,16 @@ class SplFileInfo extends \SplFileInfo
     protected $fs;
 
     /**
+     * @var string
+     */
+    protected $infoClass;
+
+    /**
+     * @var string
+     */
+    protected $fileClass;
+
+    /**
      * Memory cache
      *
      * @var array
@@ -27,14 +37,52 @@ class SplFileInfo extends \SplFileInfo
     /**
      * Constructor
      *
-     * @param string      $pathname The full file name
+     * @param string      $pathname The file to read.
      * @param MongoGridFS $fs       A MongoGridFS instance
      */
-    public function __construct($pathname, \MongoGridFS $fs)
+    public function __construct($pathname, \MongoGridFS $fs = null)
     {
         parent::__construct($pathname);
-        $this->setInfoClass(__CLASS__);
+        $this->setInfoClass();
+        $this->setFileClass();
+        $this->setGridFS($fs);
+    }
+
+    /**
+     * Set the related MongoGrid
+     * @param [type] $fs [description]
+     */
+    protected function setGridFS(\MongoGridFS $fs = null)
+    {
         $this->fs = $fs;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setInfoClass($infoClass = null)
+    {
+        $parent = 'Pitpit\Component\MongoFilesystem\SplFileInfo';
+        if (null === $infoClass || $parent === $infoClass) {
+            $infoClass = $parent;
+        } else {
+            $this->checkClass($infoClass, $parent, __METHOD__);
+        }
+        $this->infoClass = $infoClass;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setFileClass($fileClass = null)
+    {
+        $parent = 'Pitpit\Component\MongoFilesystem\SplFileObject';
+        if (null === $fileClass || $parent === $fileClass) {
+            $fileClass = $parent;
+        } else {
+            $this->checkClass($fileClass, $parent, __METHOD__);
+        }
+        $this->fileClass = $fileClass;
     }
 
     /**
@@ -267,29 +315,57 @@ class SplFileInfo extends \SplFileInfo
     /**
      * {@inheritdoc}
      */
-    public function getPathInfo($className = null)
+    public function getPathInfo($class = null)
     {
-        $className = $this->getClassName($className);
-
-        return new $className($this->getPath(), $this->fs);
+        return $this->getInfo($this->getPath(), $class);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getFileInfo($className = null)
+    public function getFileInfo($class = null)
     {
-        $className = $this->getClassName($className);
+        return $this->getInfo($this->getPathname(), $class);
+    }
 
-        return new $className($this->getPathname(), $this->fs);
+    /**
+     * Check that $className is a subclass of the current class name.
+     * If classname is not defined return the current class name..
+     *
+     * @param string $path  The path
+     * @param string $class The class to implement
+     *
+     * @return string The class to use
+     */
+    protected function getInfo($path, $class = null)
+    {
+        if ($class !== $this->infoClass) {
+            if (null === $class) {
+                $class = $this->infoClass;
+            } else {
+                $this->checkClass($class, get_class($this), __METHOD__);
+            }
+        }
+
+        return new $class($path, $this->fs);
+    }
+
+    protected function checkClass($class, $parent, $method)
+    {
+        $reflection = new \ReflectionClass($class);
+        if (!$reflection->isSubclassOf($parent)) {
+            throw new \UnexpectedValueException(sprintf("%s expects parameter 1 to be a class name derived from %s", $method, $parent));
+        }
     }
 
     /**
      * {@inheritdoc}
+     *
+     * failed to open stream: No such file or directory
      */
-    public function openFile($openMode = 'r', $useIncludePath = false, $context = null)
+    public function openFile($mode = 'r', $useIncludePath = false, $context = null)
     {
-        throw new \LogicException(sprintf('%s supported for now.', __METHOD__));
+        return new $this->fileClass($this->getPathname(), $mode, $useIncludePath, $context, $this->fs);
     }
 
     /**
@@ -313,7 +389,7 @@ class SplFileInfo extends \SplFileInfo
      *
      * @return \MongoGridFS
      */
-    public function exists()
+    protected function exists()
     {
         return (null !== $this->getDocument());
     }
@@ -351,28 +427,5 @@ class SplFileInfo extends \SplFileInfo
         }
 
         return $this->cache['resolved_path'];
-    }
-
-    /**
-     * Check that $className is a subclass of the current class name.
-     * If classname is not defined return the current class name..
-     *
-     * @param string $className The class to check
-     *
-     * @return string The class to use
-     */
-    protected function getClassName($className = null)
-    {
-        $current = get_class($this);
-        if (null === $className || $current === $className) {
-            $className = $current;
-        } else {
-            $reflection = new \ReflectionClass($className);
-            if (!$reflection->isSubclassOf($current)) {
-                throw new \UnexpectedValueException(sprintf("%s expects parameter 1 to be a class name derived from %s", __METHOD__, $current));
-            }
-        }
-
-        return $className;
     }
 }

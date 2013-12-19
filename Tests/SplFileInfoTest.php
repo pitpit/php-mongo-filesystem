@@ -4,6 +4,7 @@ namespace Pitpit\Component\MongoFilesystem\Tests;
 
 use Pitpit\Component\MongoFilesystem\Tests\MongoGridTestHelper;
 use Pitpit\Component\MongoFilesystem\SplFileInfo;
+use Pitpit\Component\MongoFilesystem\SplFileObject;
 use Symfony\Component\Filesystem\Filesystem;
 
 class SplFileInfoTest extends \PHPUnit_Framework_TestCase
@@ -569,11 +570,35 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
 
     public function testGetFileInfo()
     {
+        if ($this->legacy) {
+            $this->markTestIncomplete('Not same behavior.');
+        }
+
         $file = $this->getFile($this->workspace.'/bar/foo.txt');
         $file2 = $file->getFileInfo();
-        $this->assertInstanceOf(get_class($file), $file2);
+
         $this->assertEquals($this->workspace.'/bar/foo.txt', $file2->getPathname());
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\SplFileInfo', $file2);
     }
+
+    public function testGetFileInfoWithSameClassParameter()
+    {
+        if ($this->legacy) {
+            $this->markTestIncomplete('Not same behavior.');
+        }
+
+        $file = $this->getFile($this->workspace.'/bar/foo.txt');
+
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\SplFileInfo', $file->getFileInfo(get_class($file)));
+    }
+
+    public function testGetFileInfoWithClassParameter()
+    {
+        $file = $this->getFile($this->workspace.'/bar/foo.txt');
+
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\Tests\SplFileInfoOverrideTest', $file->getFileInfo('Pitpit\Component\MongoFilesystem\Tests\SplFileInfoOverrideTest'));
+    }
+
 
     /**
      * @expectedException UnexpectedValueException
@@ -588,17 +613,38 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
 
     public function testGetPathInfo()
     {
+        if ($this->legacy) {
+            $this->markTestIncomplete('Not same behavior.');
+        }
+
         $file = $this->getFile($this->workspace.'/bar/foo.txt');
         $dir = $file->getPathInfo();
 
-        $this->assertInstanceOf(get_class($file), $dir);
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\SplFileInfo', $dir);
         $this->assertEquals($this->workspace.'/bar', $dir->getPathname());
+    }
+
+    public function testGetPathInfoWithSameClassParameter()
+    {
+        if ($this->legacy) {
+            $this->markTestIncomplete('Not same behavior.');
+        }
+
+        $file = $this->getFile($this->workspace.'/bar/foo.txt');
+
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\SplFileInfo', $file->getPathInfo(get_class($file)));
+    }
+
+    public function testGetPathInfoWithClassParameter()
+    {
+        $file = $this->getFile($this->workspace.'/bar/foo.txt');
+
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\Tests\SplFileInfoOverrideTest', $file->getPathInfo('Pitpit\Component\MongoFilesystem\Tests\SplFileInfoOverrideTest'));
     }
 
     /**
      * @expectedException UnexpectedValueException
      *
-     * SplFileInfo::getFileInfo() expects parameter 1 to be a class name derived from SplFileInfo,
      * SplFileInfo::getPathInfo() expects parameter 1 to be a class name derived from \SplFileInfo,
      */
     public function testGetPathInfoClassNotDerived()
@@ -607,19 +653,80 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
         $file->getPathInfo('StdClass');
     }
 
-    public function testGetPathInfoClassNotDerived2()
+    public function testSetInfoClass()
     {
-        $file = $this->getFile($this->workspace.'/bar/foo.txt');
-        $file->getPathInfo(get_class($file));
+        $file = $this->getFile($this->workspace.'/foo.txt');
+        $file->setInfoClass('Pitpit\Component\MongoFilesystem\Tests\SplFileInfoOverrideTest');
+
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\Tests\SplFileInfoOverrideTest', $file->getPathInfo());
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\Tests\SplFileInfoOverrideTest', $file->getFileInfo());
     }
+
+    /**
+     * @expectedException UnexpectedValueException
+     *
+     * SplFileInfo::setInfoClass() expects parameter 1 to be a class name derived from SplFileInfo,
+     */
+    public function testSetInfoClassNotDerived()
+    {
+        $file = $this->getFile($this->workspace.'/foo.txt');
+
+        $file->setFileClass('StdClass');
+    }
+
 
     public function testSetFileClass()
     {
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        if ($this->legacy) {
+            $this->markTestIncomplete('Not same behavior.');
+        }
+
+        $file = $this->getFile($this->workspace.'/foo.txt');
+        $file->setFileClass('Pitpit\Component\MongoFilesystem\Tests\SplFileObjectOverrideTest');
+
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\Tests\SplFileObjectOverrideTest', $file->openFile());
     }
 
-    public function testSetInfoClass()
+    /**
+     * @expectedException UnexpectedValueException
+     *
+     * SplFileInfo::setFileClass() expects parameter 1 to be a class name derived from SplFileObject,
+     */
+    public function testSetFileClassNotDerived()
     {
-        $this->markTestIncomplete('This test has not been implemented yet.');
+        $file = $this->getFile($this->workspace.'/foo.txt');
+
+        $file->setFileClass('StdClass');
     }
+
+    public function testOpenFile()
+    {
+        if ($this->legacy) {
+            $this->markTestIncomplete('Not same behavior.');
+        }
+
+        $file = $this->getFile($this->workspace.'/foo.txt');
+
+        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\SplFileObject', $file->openFile());
+    }
+
+    /**
+     * @expectedException RuntimeException
+     *
+     * RuntimeException: SplFileInfo::openFile(): failed to open stream: No such file or directory
+     */
+    public function testOpenFileDoesNotExists()
+    {
+        $file = $this->getFile($this->workspace.'/unknown.txt');
+        $file->openFile();
+    }
+}
+
+class SplFileInfoOverrideTest extends SplFileInfo
+{
+}
+
+class SplFileObjectOverrideTest extends SplFileObject
+{
+
 }

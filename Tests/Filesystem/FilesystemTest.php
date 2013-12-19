@@ -35,50 +35,14 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
      */
     protected $gridfs;
 
-    // private static $symlinkOnWindows = null;
-
-    // public static function setUpBeforeClass()
-    // {
-    //     if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
-    //         self::$symlinkOnWindows = true;
-    //         $originDir = tempnam(sys_get_temp_dir(), 'sl');
-    //         $targetDir = tempnam(sys_get_temp_dir(), 'sl');
-    //         if (true !== @symlink($originDir, $targetDir)) {
-    //             $report = error_get_last();
-    //             if (is_array($report) && false !== strpos($report['message'], 'error code(1314)')) {
-    //                 self::$symlinkOnWindows = false;
-    //             }
-    //         }
-    //     }
-    // }
-
-
     protected function setUp()
     {
         $this->gridfs = MongoGridTestHelper::getGridFS();
         $this->filesystem = new Filesystem($this->gridfs);
-        $this->legacy = isset($_SERVER['LEGACY_TESTS']) ? (bool) $_SERVER['LEGACY_TESTS'] : false;
         $this->workspace = sys_get_temp_dir().DIRECTORY_SEPARATOR.uniqid();
         $this->time = time();
 
-        $old = umask(0);
-        mkdir($this->workspace.'/bar', 0777, true);
-        chmod($this->workspace.'/bar', 01777);
-        touch($this->workspace.'/foo.txt', $this->time, $this->time);
-        touch($this->workspace.'/bar/foo.txt');
-        // file_put_contents($this->workspace.'/bar/dummy.txt', 'bar');
-        umask($old);
-
-
-        // $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => '/', 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-        // $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => getcwd(), 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-        $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace, 'mimeType' => mime_content_type($this->workspace)));
-        $this->gridfs->storeBytes('', array('uploadDate' => new \MongoDate($this->time), 'filename' => $this->workspace.'/bar', 'mimeType' => mime_content_type($this->workspace.'/bar')));
-        $this->gridfs->storeFile($this->workspace.'/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/foo.txt')));
-        $this->gridfs->storeFile($this->workspace.'/bar/foo.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/foo.txt')));
-        // $this->gridfs->storeFile($this->workspace.'/bar/dummy.txt', array('uploadDate' => new \MongoDate($this->time), 'mimeType' => mime_content_type($this->workspace.'/bar/dummy.txt')));
-
-        $this->clean($this->workspace);
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace, 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
     }
 
     protected function tearDown()
@@ -86,22 +50,6 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $this->gridfs->drop();
     }
 
-    /**
-     * @param string $file
-     */
-    private function clean($file)
-    {
-        if (is_dir($file) && !is_link($file)) {
-            $dir = new \FilesystemIterator($file);
-            foreach ($dir as $childFile) {
-                $this->clean($childFile);
-            }
-
-            rmdir($file);
-        } else {
-            unlink($file);
-        }
-    }
 
     /**
      * Reimp of PHPUnit_Framework_Assert::assertFileExists to use MongoDB instead of physical drive
@@ -132,18 +80,34 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         self::assertEquals('directory', $found->file['mimeType'], $message);
     }
 
-    // public function testCopyCreatesNewFile()
-    // {
-    //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
-    //     $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
+    public function testCopyCreatesNewFile()
+    {
+        $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
+        $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
-    //     file_put_contents($sourceFilePath, 'SOURCE FILE');
 
-    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
+        $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'mimeType' => 'text/plain'));
 
-    //     $this->assertFileExists($targetFilePath);
-    //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
-    // }
+        $this->filesystem->copy($sourceFilePath, $targetFilePath);
+
+        $this->assertFileExists($targetFilePath);
+        // $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
+    }
+
+    public function testCopyFromDisk()
+    {
+        $sourceFilePath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'copy_source_file'.rand(0, 9999);
+        $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
+
+        @mkdir(dirname($sourceFilePath), 0777, true);
+        file_put_contents($sourceFilePath, 'SOURCE FILE');
+
+        $this->filesystem->copy($sourceFilePath, $targetFilePath);
+
+        $this->assertFileExists($targetFilePath);
+        //$this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
+    }
+
 
     // /**
     //  * @expectedException \Symfony\Component\Filesystem\Exception\IOException
@@ -400,14 +364,20 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     public function testFilesExists()
     {
-        $this->assertTrue($this->filesystem->exists($this->workspace.'/foo.txt'));
-        $this->assertTrue($this->filesystem->exists($this->workspace.'/bar'));
+        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'mimeType' => 'text/plain'));
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'mimeType' => 'directory'));
+
+        $this->assertTrue($this->filesystem->exists($this->workspace.'/file1'));
+        $this->assertTrue($this->filesystem->exists($this->workspace.'/folder'));
     }
 
     public function testFilesExistsTraversableObjectOfFilesAndDirectories()
     {
+        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'mimeType' => 'text/plain'));
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'mimeType' => 'directory'));
+
         $files = new \ArrayObject(array(
-            $this->workspace.'/bar', $this->workspace.'/foo.txt'
+            $this->workspace.'/folder', $this->workspace.'/file1'
         ));
 
         $this->assertTrue($this->filesystem->exists($files));
@@ -415,8 +385,11 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     public function testFilesNotExistsTraversableObjectOfFilesAndDirectories()
     {
+        $this->gridfs->storeBytes('bar', array('filename' => $this->workspace.'/file1', 'mimeType' => 'text/plain'));
+        $this->gridfs->storeBytes('', array('filename' => $this->workspace.'/folder', 'mimeType' => 'directory'));
+
         $files = new \ArrayObject(array(
-            $this->workspace.'/bar', $this->workspace.'/foo.txt', $this->workspace.'/unknown.txt'
+            $this->workspace.'/folder', $this->workspace.'/file1', $this->workspace.'/unknown'
         ));
 
         $this->assertFalse($this->filesystem->exists($files));
@@ -424,7 +397,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     public function testInvalidFileNotExists()
     {
-        $this->assertFalse($this->filesystem->exists($this->workspace.'/unknown.txt'));
+        $this->assertFalse($this->filesystem->exists($this->workspace.'/unknown'));
     }
 
     // public function testChmodChangesFileMode()
