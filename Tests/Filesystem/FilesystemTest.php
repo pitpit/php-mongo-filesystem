@@ -67,7 +67,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     /**
      * Test  over MongoDB content of $filepath
      */
-    public static function assertFileContent($content, $filepath)
+    public static function assertFileContent($content, $filepath, $message = null)
     {
         if (!is_string($filepath)) {
             throw \PHPUnit_Util_InvalidArgumentHelper::factory(1, 'string');
@@ -75,7 +75,7 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
 
         self::assertNotNull($found);
-        self::assertEquals($content, $found->getBytes());
+        self::assertEquals($content, $found->getBytes(), $message);
     }
 
     /**
