@@ -34,19 +34,17 @@ class SplFileObject extends SplFileInfo
             if (!$this->exists()) {
                 // If the file does not exist, attempt to create it.
                 $this->fs->storeBytes('', array('filename' => $this->getResolvedPath(), 'type' => 'file'));
+                $this->cache = array();
             } else {
                 //truncate the file to zero length
                 $file = $this->getDocument();
-                $this->fs->storeBytes('', array('_id' => $this->file->file['_id'], 'type' => 'file'));
-
-                // $this->fs->put($filename);
-                //$this->fs->storeBytes('', array('_id' => $this->file->file['_id']));
-                // $this->fs->chunks->update(array('files_id' => $this->file->file['_id']), array('data'));
+                $this->fs->storeBytes('', array('_id' => $file->file['_id'], 'type' => 'file'));
             }
         } else if ('a' === $mode || 'a+' === $mode) {
             if (!$this->exists()) {
                 // If the file does not exist, attempt to create it.
                 $this->fs->storeBytes('', array('filename' => $this->getResolvedPath()));
+                $this->cache = array();
             }
         }
 
@@ -80,8 +78,8 @@ class SplFileObject extends SplFileInfo
     /**
      * {@inheritdoc}
      */
-    public function fwrite()
+    public function fwrite($str, $length = null)
     {
-
+        fwrite($this->stream, $str, $length);
     }
 }

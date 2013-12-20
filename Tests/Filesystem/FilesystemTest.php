@@ -90,7 +90,9 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
         $this->assertFileExists($targetFilePath);
-        // $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
+        $file = $this->gridfs->findOne(array('filename' => $targetFilePath));
+        var_dump($file->file);
+        $this->assertEquals('SOURCE FILE', $file->getBytes());
     }
 
     public function testCopyFromDisk()

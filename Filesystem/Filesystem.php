@@ -148,18 +148,6 @@ class Filesystem extends BaseFilesystem
             while (!$originFileInfoObject->eof()) {
                 $targetFileInfoObject->fwrite($originFileInfoObject->fgets());
             }
-
-            // https://bugs.php.net/bug.php?id=64634
-            // $source = fopen($originFile, 'r');
-            // $target = fopen($targetFile, 'w+');
-            // stream_copy_to_stream($originFileInfoObject, $targetFileInfoObject);
-            // fclose($source);
-            // fclose($target);
-            // unset($source, $target);
-
-            if ($targetFileInfo->isFile()) {
-                throw new IOException(sprintf('Failed to copy %s to %s', $originFile, $targetFile));
-            }
         }
     }
 
