@@ -4,8 +4,6 @@ namespace Pitpit\Component\MongoFilesystem\Tests;
 
 use Pitpit\Component\MongoFilesystem\Tests\MongoGridTestHelper;
 use Pitpit\Component\MongoFilesystem\SplFileInfo;
-use Pitpit\Component\MongoFilesystem\SplFileObject;
-use Symfony\Component\Filesystem\Filesystem;
 
 class SplFileInfoTest extends \PHPUnit_Framework_TestCase
 {
@@ -647,10 +645,12 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
     {
         $file = $this->getFile($this->workspace.'/foo.txt');
 
-        $file->setFileClass('StdClass');
+        $file->setInfoClass('StdClass');
     }
 
-
+    /**
+     * @expectedException Exception
+     */
     public function testSetFileClass()
     {
         if ($this->legacy) {
@@ -659,22 +659,11 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
 
         $file = $this->getFile($this->workspace.'/foo.txt');
         $file->setFileClass('Pitpit\Component\MongoFilesystem\Tests\SplFileObjectOverrideTest');
-
-        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\Tests\SplFileObjectOverrideTest', $file->openFile());
     }
 
     /**
-     * @expectedException UnexpectedValueException
-     *
-     * SplFileInfo::setFileClass() expects parameter 1 to be a class name derived from SplFileObject,
+     * @expectedException Exception
      */
-    public function testSetFileClassNotDerived()
-    {
-        $file = $this->getFile($this->workspace.'/foo.txt');
-
-        $file->setFileClass('StdClass');
-    }
-
     public function testOpenFile()
     {
         if ($this->legacy) {
@@ -682,27 +671,10 @@ class SplFileInfoTest extends \PHPUnit_Framework_TestCase
         }
 
         $file = $this->getFile($this->workspace.'/foo.txt');
-
-        $this->assertInstanceOf('Pitpit\Component\MongoFilesystem\SplFileObject', $file->openFile());
-    }
-
-    /**
-     * @expectedException RuntimeException
-     *
-     * RuntimeException: SplFileInfo::openFile(): failed to open stream: No such file or directory
-     */
-    public function testOpenFileDoesNotExists()
-    {
-        $file = $this->getFile($this->workspace.'/unknown.txt');
         $file->openFile();
     }
 }
 
 class SplFileInfoOverrideTest extends SplFileInfo
 {
-}
-
-class SplFileObjectOverrideTest extends SplFileObject
-{
-
 }

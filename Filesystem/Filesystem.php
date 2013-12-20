@@ -142,11 +142,11 @@ class Filesystem extends BaseFilesystem
         }
 
         if ($doCopy) {
-
-            $originFileInfoObject = $originFileInfo->openFile('r');
-            $targetFileInfoObject = $targetFileInfo->openFile('w+');
-            while (!$originFileInfoObject->eof()) {
-                $targetFileInfoObject->fwrite($originFileInfoObject->fgets());
+            $originDocument = $originFileInfo->getDocument();
+            $targetDocument = $targetFileInfo->getDocument();
+            $this->fs->storeBytes($originDocument->getBytes(), array('filename' => $targetFileInfo->getResolvedPath(), 'type' => 'file'));
+            if ($targetDocument) {
+                $this->fs->remove(array('_id' => $targetDocument->file['_id']));
             }
         }
     }
@@ -168,58 +168,4 @@ class Filesystem extends BaseFilesystem
 
         return $files;
     }
-
-    // /**
-    //  * Get a file in MongoGridFS
-    //  * The result is cached in memory.
-    //  *
-    //  * @param string $filepath The full path filename
-    //  *
-    //  * @return \MongoGridFS
-    //  */
-    // protected function getDocument($filepath)
-    // {
-    //     $filepath = $this->getResolvedPath($filepath);
-    //     if (!isset($this->cache['document'][$filepath])) {
-    //         $this->cache['document'][$filepath] = $this->fs->findOne(array('filename' => $filepath));
-    //     }
-
-    //     return $this->cache['document'][$filepath];
-    // }
-
-    // /**
-    //  * Resolve pathname removing .. and . and cache it in memory
-    //  *
-    //  * @param string $filepath The full path filename
-    //  *
-    //  * @return string
-    //  */
-    // protected function getResolvedPath($filepath)
-    // {
-    //     if (!isset($this->cache['resolved_path'][$filepath])) {
-    //         $parts = explode('/', $filepath);
-    //         $parents = array();
-    //         foreach ($parts as $dir) {
-    //             switch($dir) {
-    //                 case '.':
-    //                     break;
-    //                 case '..':
-    //                     array_pop($parents);
-    //                     break;
-    //                 default:
-    //                     $parents[] = $dir;
-    //                     break;
-    //             }
-    //         }
-
-    //         $pathname = implode('/', $parents);
-    //         if ('' === $pathname) {
-    //             $pathname = getcwd();
-    //         }
-
-    //         $this->cache['resolved_path'][$filepath] = $pathname;
-    //     }
-
-    //     return $this->cache['resolved_path'][$filepath];
-    // }
 }

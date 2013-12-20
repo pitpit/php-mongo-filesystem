@@ -21,11 +21,6 @@ class SplFileInfo extends \SplFileInfo
     protected $infoClass;
 
     /**
-     * @var string
-     */
-    protected $fileClass;
-
-    /**
      * Memory cache
      *
      * @var array
@@ -42,7 +37,6 @@ class SplFileInfo extends \SplFileInfo
     {
         parent::__construct($pathname);
         $this->setInfoClass();
-        $this->setFileClass();
         $this->setGridFS($fs);
     }
 
@@ -74,13 +68,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function setFileClass($fileClass = null)
     {
-        $parent = 'Pitpit\Component\MongoFilesystem\SplFileObject';
-        if (null === $fileClass || $parent === $fileClass) {
-            $fileClass = $parent;
-        } else {
-            $this->checkClass($fileClass, $parent, __METHOD__);
-        }
-        $this->fileClass = $fileClass;
+        throw new \Exception('Not supported.');
     }
 
     /**
@@ -94,9 +82,7 @@ class SplFileInfo extends \SplFileInfo
             return false;
         }
 
-        $pathname = $this->getResolvedPath();
-
-        return $pathname;
+        return $this->getResolvedPath();
     }
 
     /**
@@ -351,7 +337,7 @@ class SplFileInfo extends \SplFileInfo
      */
     public function openFile($mode = 'r', $useIncludePath = false, $context = null)
     {
-        return new $this->fileClass($this->getPathname(), $mode, $useIncludePath, $context, $this->fs);
+        throw new \Exception('Not supported.');
     }
 
     /**
@@ -360,13 +346,21 @@ class SplFileInfo extends \SplFileInfo
      *
      * @return \MongoGridFS
      */
-    protected function getDocument()
+    public function getDocument()
     {
         if (!isset($this->cache['document'])) {
             $this->cache['document'] = $this->fs->findOne(array('filename' => $this->getResolvedPath()));
         }
 
         return $this->cache['document'];
+    }
+
+    /**
+     * Clear the cache of getDocument
+     */
+    protected function clearDocumentCache()
+    {
+        unset($this->cache['document']);
     }
 
     /**
