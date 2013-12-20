@@ -49,7 +49,6 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $this->gridfs->drop();
     }
 
-
     /**
      * Reimp of PHPUnit_Framework_Assert::assertFileExists to use MongoDB instead of physical drive
      *
@@ -63,6 +62,20 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
 
         self::assertNotNull($found, $message);
+    }
+
+    /**
+     * Test  over MongoDB content of $filepath
+     */
+    public static function assertFileContent($content, $filepath)
+    {
+        if (!is_string($filepath)) {
+            throw \PHPUnit_Util_InvalidArgumentHelper::factory(1, 'string');
+        }
+        $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
+
+        self::assertNotNull($found);
+        self::assertEquals($content, $found->getBytes());
     }
 
     /**
@@ -84,13 +97,12 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
         $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
-
         $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'type' => 'file'));
 
         $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
         $this->assertFileExists($targetFilePath);
-        $this->assertEquals('SOURCE FILE', $this->gridfs->findOne(array('filename' => $targetFilePath))->getBytes());
+        $this->assertFileContent('SOURCE FILE', $targetFilePath);
     }
 
     // public function testCopyFromDisk()
@@ -107,84 +119,75 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $this->assertEquals('SOURCE FILE', $this->gridfs->findOne(array('filename' => $targetFilePath))->getBytes());
     // }
 
-    // /**
-    //  * @expectedException \Symfony\Component\Filesystem\Exception\IOException
-    //  */
-    // public function testCopyFails()
-    // {
-    //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
-    //     $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
+    /**
+     * @expectedException \Symfony\Component\Filesystem\Exception\IOException
+     */
+    public function testCopyFails()
+    {
+        $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
+        $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
-    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
-    // }
+        $this->filesystem->copy($sourceFilePath, $targetFilePath);
+    }
 
-    // public function testCopyOverridesExistingFileIfModified()
-    // {
-    //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
-    //     $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
+    public function testCopyOverridesExistingFileIfModified()
+    {
+        $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
+        $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
-    //     file_put_contents($sourceFilePath, 'SOURCE FILE');
-    //     file_put_contents($targetFilePath, 'TARGET FILE');
-    //     touch($targetFilePath, time() - 1000);
+        $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'type' => 'file'));
+        $this->gridfs->storeBytes('TARGET FILE', array('filename' => $targetFilePath, 'type' => 'file', 'uploadDate' => new \MongoDate(time() - 1000)));
 
-    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
+        $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
-    //     $this->assertFileExists($targetFilePath);
-    //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
-    // }
+        $this->assertFileExists($targetFilePath);
+        $this->assertFileContent('SOURCE FILE', $targetFilePath);
+    }
 
-    // public function testCopyDoesNotOverrideExistingFileByDefault()
-    // {
-    //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
-    //     $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
+    public function testCopyDoesNotOverrideExistingFileByDefault()
+    {
+        $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
+        $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
-    //     file_put_contents($sourceFilePath, 'SOURCE FILE');
-    //     file_put_contents($targetFilePath, 'TARGET FILE');
+        $time = time() - 1000;
+        $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'type' => 'file', 'uploadDate' => new \MongoDate($time)));
+        $this->gridfs->storeBytes('TARGET FILE', array('filename' => $targetFilePath, 'type' => 'file', 'uploadDate' => new \MongoDate($time)));
 
-    //     // make sure both files have the same modification time
-    //     $modificationTime = time() - 1000;
-    //     touch($sourceFilePath, $modificationTime);
-    //     touch($targetFilePath, $modificationTime);
+        $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
-    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
+        $this->assertFileExists($targetFilePath);
+        $this->assertFileContent('TARGET FILE', $targetFilePath);
+    }
 
-    //     $this->assertFileExists($targetFilePath);
-    //     $this->assertEquals('TARGET FILE', file_get_contents($targetFilePath));
-    // }
+    public function testCopyOverridesExistingFileIfForced()
+    {
+        $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
+        $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
 
-    // public function testCopyOverridesExistingFileIfForced()
-    // {
-    //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
-    //     $targetFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_target_file';
+        $time = time() - 1000;
+        $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'type' => 'file', 'uploadDate' => new \MongoDate($time)));
+        $this->gridfs->storeBytes('TARGET FILE', array('filename' => $targetFilePath, 'type' => 'file', 'uploadDate' => new \MongoDate($time)));
 
-    //     file_put_contents($sourceFilePath, 'SOURCE FILE');
-    //     file_put_contents($targetFilePath, 'TARGET FILE');
+        $this->filesystem->copy($sourceFilePath, $targetFilePath, true);
 
-    //     // make sure both files have the same modification time
-    //     $modificationTime = time() - 1000;
-    //     touch($sourceFilePath, $modificationTime);
-    //     touch($targetFilePath, $modificationTime);
+        $this->assertFileExists($targetFilePath);
+        $this->assertFileContent('SOURCE FILE', $targetFilePath);
+    }
 
-    //     $this->filesystem->copy($sourceFilePath, $targetFilePath, true);
+    public function testCopyCreatesTargetDirectoryIfItDoesNotExist()
+    {
+        $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
+        $targetFileDirectory = $this->workspace.DIRECTORY_SEPARATOR.'directory';
+        $targetFilePath = $targetFileDirectory.DIRECTORY_SEPARATOR.'copy_target_file';
 
-    //     $this->assertFileExists($targetFilePath);
-    //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
-    // }
+        $this->gridfs->storeBytes('SOURCE FILE', array('filename' => $sourceFilePath, 'type' => 'file'));
 
-    // public function testCopyCreatesTargetDirectoryIfItDoesNotExist()
-    // {
-    //     $sourceFilePath = $this->workspace.DIRECTORY_SEPARATOR.'copy_source_file';
-    //     $targetFileDirectory = $this->workspace.DIRECTORY_SEPARATOR.'directory';
-    //     $targetFilePath = $targetFileDirectory.DIRECTORY_SEPARATOR.'copy_target_file';
+        $this->filesystem->copy($sourceFilePath, $targetFilePath);
 
-    //     file_put_contents($sourceFilePath, 'SOURCE FILE');
-
-    //     $this->filesystem->copy($sourceFilePath, $targetFilePath);
-
-    //     $this->assertTrue(is_dir($targetFileDirectory));
-    //     $this->assertFileExists($targetFilePath);
-    //     $this->assertEquals('SOURCE FILE', file_get_contents($targetFilePath));
-    // }
+        $this->assertIsDir($targetFileDirectory);
+        $this->assertFileExists($targetFilePath);
+        $this->assertFileContent('SOURCE FILE', $targetFilePath);
+    }
 
     public function testMkdirCreatesDirectoriesRecursively()
     {
