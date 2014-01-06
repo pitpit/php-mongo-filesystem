@@ -40,11 +40,11 @@ class FinderTest extends \PHPUnit_Framework_TestCase
         $fs->touch($this->workspace.'/bar/.hidden');
 
         if (!$this->legacy) {
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('filename' => $this->workspace, 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-            MongoGridTestHelper::getGridFS()->storeBytes('', array('filename' => $this->workspace.'/bar', 'mimeType' => SplFileInfo::FOLDER_MIMETYPE));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/foo.txt', array('mimeType' => 'text/plain'));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/foo.txt', array('mimeType' => 'text/plain'));
-            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/.hidden', array('mimeType' => 'text/plain'));
+            MongoGridTestHelper::getGridFS()->storeBytes('', array('filename' => $this->workspace, 'type' => 'dir'));
+            MongoGridTestHelper::getGridFS()->storeBytes('', array('filename' => $this->workspace.'/bar', 'type' => 'dir'));
+            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/foo.txt', array('type' => 'file'));
+            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/foo.txt', array('type' => 'file'));
+            MongoGridTestHelper::getGridFS()->storeFile($this->workspace.'/bar/.hidden', array('type' => 'file'));
 
             $fs->remove($this->workspace);
         }

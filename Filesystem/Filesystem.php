@@ -52,13 +52,7 @@ class Filesystem extends BaseFilesystem
     }
 
     /**
-     * Sets access and modification time of file.
-     *
-     * @param string|array|\Traversable $files A filename, an array of files, or a \Traversable instance to create
-     * @param integer                   $time  The touch time as a unix timestamp
-     * @param integer                   $atime The access time as a unix timestamp
-     *
-     * @throws IOException When touch fails
+     * {@inheritdoc}
      */
     public function touch($files, $time = null, $atime = null)
     {
@@ -82,12 +76,7 @@ class Filesystem extends BaseFilesystem
     }
 
     /**
-     * Creates a directory recursively.
-     *
-     * @param string|array|\Traversable $dirs The directory path
-     * @param integer                   $mode The directory mode
-     *
-     * @throws IOException On any directory creation failure
+     * {@inheritdoc}
      */
     public function mkdir($dirs, $mode = 0777)
     {
@@ -113,17 +102,7 @@ class Filesystem extends BaseFilesystem
     }
 
     /**
-     * Copies a file.
-     *
-     * This method only copies the file if the origin file is newer than the target file.
-     *
-     * By default, if the target already exists, it is not overridden.
-     *
-     * @param string  $originFile The original filename
-     * @param string  $targetFile The target filename
-     * @param boolean $override   Whether to override an existing file or not
-     *
-     * @throws IOException When copy fails
+     * {@inheritdoc}
      */
     public function copy($originFile, $targetFile, $override = false)
     {
@@ -148,6 +127,28 @@ class Filesystem extends BaseFilesystem
             if ($targetDocument) {
                 $this->fs->remove(array('_id' => $targetDocument->file['_id']));
             }
+        }
+    }
+
+    /**
+     * Removes files or directories.
+     *
+     * @param string|array|\Traversable $files A filename, an array of files, or a \Traversable instance to remove
+     *
+     * @throws IOException When removal fails
+     */
+    public function remove($files)
+    {
+        $files = iterator_to_array($this->toIterator($files));
+        $files = array_reverse($files);
+        $n = 0;
+        foreach ($files as $file) {
+            $result = $this->fs->remove(array('filename' => new \MongoRegex('/^'.preg_quote(rtrim($file, '/'), '/').'/')));
+            $n += $result['n'];
+        }
+
+        if ($n < 1) {
+            throw new IOException(sprintf('Failed to remove directory %s', $file));
         }
     }
 

@@ -65,6 +65,21 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * Reimp of PHPUnit_Framework_Assert::assertFileExists to use MongoDB instead of physical drive
+     *
+     * {@inheritdoc}
+     */
+    public static function assertFileNotExists($filepath, $message = null)
+    {
+        if (!is_string($filepath)) {
+            throw \PHPUnit_Util_InvalidArgumentHelper::factory(1, 'string');
+        }
+        $found = MongoGridTestHelper::getGridFS()->findOne(array('filename' => $filepath));
+
+        self::assertNull($found, $message);
+    }
+
+    /**
      * Test  over MongoDB content of $filepath
      */
     public static function assertFileContent($content, $filepath, $message = null)
@@ -285,67 +300,69 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
         $this->assertFileExists($basePath.'3');
     }
 
-    // public function testRemoveCleansFilesAndDirectoriesIteratively()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR.'directory'.DIRECTORY_SEPARATOR;
+    public function testRemoveCleansFilesAndDirectoriesIteratively()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR.'directory'.DIRECTORY_SEPARATOR;
 
-    //     mkdir($basePath);
-    //     mkdir($basePath.'dir');
-    //     touch($basePath.'file');
+        $this->gridfs->storeBytes('', array('filename' => $basePath, 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.'file', 'type' => 'file'));
 
-    //     $this->filesystem->remove($basePath);
+        $this->filesystem->remove($basePath);
 
-    //     $this->assertTrue(!is_dir($basePath));
-    // }
+        $this->assertFileNotExists($basePath.'dir');
+        $this->assertFileNotExists($basePath.'file');
+        $this->assertFileNotExists($basePath);
+    }
 
-    // public function testRemoveCleansArrayOfFilesAndDirectories()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+    public function testRemoveCleansArrayOfFilesAndDirectories()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
 
-    //     mkdir($basePath.'dir');
-    //     touch($basePath.'file');
+        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.'file', 'type' => 'file'));
 
-    //     $files = array(
-    //         $basePath.'dir', $basePath.'file'
-    //     );
+        $files = array(
+            $basePath.'dir', $basePath.'file'
+        );
 
-    //     $this->filesystem->remove($files);
+        $this->filesystem->remove($files);
 
-    //     $this->assertTrue(!is_dir($basePath.'dir'));
-    //     $this->assertTrue(!is_file($basePath.'file'));
-    // }
+        $this->assertFileNotExists($basePath.'dir');
+        $this->assertFileNotExists($basePath.'file');
+    }
 
-    // public function testRemoveCleansTraversableObjectOfFilesAndDirectories()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+    public function testRemoveCleansTraversableObjectOfFilesAndDirectories()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
 
-    //     mkdir($basePath.'dir');
-    //     touch($basePath.'file');
+        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.'file', 'type' => 'file'));
 
-    //     $files = new \ArrayObject(array(
-    //         $basePath.'dir', $basePath.'file'
-    //     ));
+        $files = new \ArrayObject(array(
+            $basePath.'dir', $basePath.'file'
+        ));
 
-    //     $this->filesystem->remove($files);
+        $this->filesystem->remove($files);
 
-    //     $this->assertTrue(!is_dir($basePath.'dir'));
-    //     $this->assertTrue(!is_file($basePath.'file'));
-    // }
+        $this->assertFileNotExists($basePath.'dir');
+        $this->assertFileNotExists($basePath.'file');
+    }
 
-    // public function testRemoveIgnoresNonExistingFiles()
-    // {
-    //     $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+    public function testRemoveIgnoresNonExistingFiles()
+    {
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
 
-    //     mkdir($basePath.'dir');
+        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
 
-    //     $files = array(
-    //         $basePath.'dir', $basePath.'file'
-    //     );
+        $files = array(
+            $basePath.'dir', $basePath.'file'
+        );
 
-    //     $this->filesystem->remove($files);
+        $this->filesystem->remove($files);
 
-    //     $this->assertTrue(!is_dir($basePath.'dir'));
-    // }
+       $this->assertFileNotExists($basePath.'dir');
+    }
 
     // public function testRemoveCleansInvalidLinks()
     // {
