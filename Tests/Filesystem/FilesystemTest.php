@@ -302,66 +302,69 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
 
     public function testRemoveCleansFilesAndDirectoriesIteratively()
     {
-        $basePath = $this->workspace.DIRECTORY_SEPARATOR.'directory'.DIRECTORY_SEPARATOR;
+        $basePath = $this->workspace.DIRECTORY_SEPARATOR.'directory';
 
         $this->gridfs->storeBytes('', array('filename' => $basePath, 'type' => 'dir'));
-        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
-        $this->gridfs->storeBytes('', array('filename' => $basePath.'file', 'type' => 'file'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.DIRECTORY_SEPARATOR.'dir', 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.DIRECTORY_SEPARATOR.'file', 'type' => 'file'));
 
         $this->filesystem->remove($basePath);
 
-        $this->assertFileNotExists($basePath.'dir');
-        $this->assertFileNotExists($basePath.'file');
+        $this->assertFileNotExists($basePath.DIRECTORY_SEPARATOR.'dir');
+        $this->assertFileNotExists($basePath.DIRECTORY_SEPARATOR.'file');
         $this->assertFileNotExists($basePath);
     }
 
     public function testRemoveCleansArrayOfFilesAndDirectories()
     {
-        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $basePath = $this->workspace;
 
-        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
-        $this->gridfs->storeBytes('', array('filename' => $basePath.'file', 'type' => 'file'));
+
+        $this->gridfs->storeBytes('', array('filename' => $basePath, 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.DIRECTORY_SEPARATOR.'dir', 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.DIRECTORY_SEPARATOR.'file', 'type' => 'file'));
 
         $files = array(
-            $basePath.'dir', $basePath.'file'
+            $basePath.DIRECTORY_SEPARATOR.'dir', $basePath.DIRECTORY_SEPARATOR.'file'
         );
 
         $this->filesystem->remove($files);
 
-        $this->assertFileNotExists($basePath.'dir');
-        $this->assertFileNotExists($basePath.'file');
+        $this->assertFileNotExists($basePath.DIRECTORY_SEPARATOR.'dir');
+        $this->assertFileNotExists($basePath.DIRECTORY_SEPARATOR.'file');
     }
 
     public function testRemoveCleansTraversableObjectOfFilesAndDirectories()
     {
-        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $basePath = $this->workspace;
 
-        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
-        $this->gridfs->storeBytes('', array('filename' => $basePath.'file', 'type' => 'file'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath, 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.DIRECTORY_SEPARATOR.'dir', 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.DIRECTORY_SEPARATOR.'file', 'type' => 'file'));
 
         $files = new \ArrayObject(array(
-            $basePath.'dir', $basePath.'file'
+            $basePath.DIRECTORY_SEPARATOR.'dir', $basePath.DIRECTORY_SEPARATOR.'file'
         ));
 
         $this->filesystem->remove($files);
 
-        $this->assertFileNotExists($basePath.'dir');
-        $this->assertFileNotExists($basePath.'file');
+        $this->assertFileNotExists($basePath.DIRECTORY_SEPARATOR.'dir');
+        $this->assertFileNotExists($basePath.DIRECTORY_SEPARATOR.'file');
     }
 
     public function testRemoveIgnoresNonExistingFiles()
     {
-        $basePath = $this->workspace.DIRECTORY_SEPARATOR;
+        $basePath = $this->workspace;
 
-        $this->gridfs->storeBytes('', array('filename' => $basePath.'dir', 'type' => 'dir'));
+        $this->gridfs->storeBytes('', array('filename' => $basePath.DIRECTORY_SEPARATOR.'dir', 'type' => 'dir'));
 
         $files = array(
-            $basePath.'dir', $basePath.'file'
+            $basePath.DIRECTORY_SEPARATOR.'dir', $basePath.DIRECTORY_SEPARATOR.'file'
         );
 
         $this->filesystem->remove($files);
 
-       $this->assertFileNotExists($basePath.'dir');
+       $this->assertFileNotExists($basePath.DIRECTORY_SEPARATOR.'dir');
     }
 
     // public function testRemoveCleansInvalidLinks()
@@ -637,56 +640,59 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $this->filesystem->chgrp($dir, 'user'.time().mt_rand(1000, 9999));
     // }
 
-    // public function testRename()
-    // {
-    //     $file = $this->workspace.DIRECTORY_SEPARATOR.'file';
-    //     $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
-    //     touch($file);
+    public function testRename()
+    {
+        $file = $this->workspace.DIRECTORY_SEPARATOR.'file';
+        $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
+        // touch($file);
 
-    //     $this->filesystem->rename($file, $newPath);
+        $this->gridfs->storeBytes('', array('filename' => $file, 'type' => 'file'));
 
-    //     $this->assertFileNotExists($file);
-    //     $this->assertFileExists($newPath);
-    // }
+        $this->filesystem->rename($file, $newPath);
 
-    // /**
-    //  * @expectedException \Symfony\Component\Filesystem\Exception\IOException
-    //  */
-    // public function testRenameThrowsExceptionIfTargetAlreadyExists()
-    // {
-    //     $file = $this->workspace.DIRECTORY_SEPARATOR.'file';
-    //     $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
+        $this->assertFileNotExists($file);
+        $this->assertFileExists($newPath);
+    }
 
-    //     touch($file);
-    //     touch($newPath);
+    /**
+     * @expectedException \Symfony\Component\Filesystem\Exception\IOException
+     */
+    public function testRenameThrowsExceptionIfTargetAlreadyExists()
+    {
+        $file = $this->workspace.DIRECTORY_SEPARATOR.'file';
+        $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
 
-    //     $this->filesystem->rename($file, $newPath);
-    // }
+        $this->gridfs->storeBytes('', array('filename' => $file, 'type' => 'file'));
+        $this->gridfs->storeBytes('', array('filename' => $newPath, 'type' => 'file'));
 
-    // public function testRenameOverwritesTheTargetIfItAlreadyExists()
-    // {
-    //     $file = $this->workspace.DIRECTORY_SEPARATOR.'file';
-    //     $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
+        $this->filesystem->rename($file, $newPath);
+    }
 
-    //     touch($file);
-    //     touch($newPath);
+    public function testRenameOverwritesTheTargetIfItAlreadyExists()
+    {
+        $file = $this->workspace.DIRECTORY_SEPARATOR.'file';
+        $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
 
-    //     $this->filesystem->rename($file, $newPath, true);
+        $this->gridfs->storeBytes('foo', array('filename' => $file, 'type' => 'file'));
+        $this->gridfs->storeBytes('bar', array('filename' => $newPath, 'type' => 'file'));
 
-    //     $this->assertFileNotExists($file);
-    //     $this->assertFileExists($newPath);
-    // }
+        $this->filesystem->rename($file, $newPath, true);
 
-    // /**
-    //  * @expectedException \Symfony\Component\Filesystem\Exception\IOException
-    //  */
-    // public function testRenameThrowsExceptionOnError()
-    // {
-    //     $file = $this->workspace.DIRECTORY_SEPARATOR.uniqid();
-    //     $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
+        $this->assertFileNotExists($file);
+        $this->assertFileExists($newPath);
+        $this->assertFileContent('foo', $newPath);
+    }
 
-    //     $this->filesystem->rename($file, $newPath);
-    // }
+    /**
+     * @expectedException \Symfony\Component\Filesystem\Exception\IOException
+     */
+    public function testRenameThrowsExceptionOnError()
+    {
+        $file = $this->workspace.DIRECTORY_SEPARATOR.uniqid();
+        $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
+
+        $this->filesystem->rename($file, $newPath);
+    }
 
     // public function testSymlink()
     // {
@@ -768,53 +774,6 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $this->assertEquals($file, readlink($link2));
     // }
 
-    // /**
-    //  * @dataProvider providePathsForMakePathRelative
-    //  */
-    // public function testMakePathRelative($endPath, $startPath, $expectedPath)
-    // {
-    //     $path = $this->filesystem->makePathRelative($endPath, $startPath);
-
-    //     $this->assertEquals($expectedPath, $path);
-    // }
-
-    // /**
-    //  * @return array
-    //  */
-    // public function providePathsForMakePathRelative()
-    // {
-    //     $paths = array(
-    //         array('/var/lib/symfony/src/Symfony/', '/var/lib/symfony/src/Symfony/Component', '../'),
-    //         array('/var/lib/symfony/src/Symfony/', '/var/lib/symfony/src/Symfony/Component/', '../'),
-    //         array('/var/lib/symfony/src/Symfony', '/var/lib/symfony/src/Symfony/Component', '../'),
-    //         array('/var/lib/symfony/src/Symfony', '/var/lib/symfony/src/Symfony/Component/', '../'),
-    //         array('var/lib/symfony/', 'var/lib/symfony/src/Symfony/Component', '../../../'),
-    //         array('/usr/lib/symfony/', '/var/lib/symfony/src/Symfony/Component', '../../../../../../usr/lib/symfony/'),
-    //         array('/var/lib/symfony/src/Symfony/', '/var/lib/symfony/', 'src/Symfony/'),
-    //         array('/aa/bb', '/aa/bb', './'),
-    //         array('/aa/bb', '/aa/bb/', './'),
-    //         array('/aa/bb/', '/aa/bb', './'),
-    //         array('/aa/bb/', '/aa/bb/', './'),
-    //         array('/aa/bb/cc', '/aa/bb/cc/dd', '../'),
-    //         array('/aa/bb/cc', '/aa/bb/cc/dd/', '../'),
-    //         array('/aa/bb/cc/', '/aa/bb/cc/dd', '../'),
-    //         array('/aa/bb/cc/', '/aa/bb/cc/dd/', '../'),
-    //         array('/aa/bb/cc', '/aa', 'bb/cc/'),
-    //         array('/aa/bb/cc', '/aa/', 'bb/cc/'),
-    //         array('/aa/bb/cc/', '/aa', 'bb/cc/'),
-    //         array('/aa/bb/cc/', '/aa/', 'bb/cc/'),
-    //         array('/a/aab/bb', '/a/aa', '../aab/bb/'),
-    //         array('/a/aab/bb', '/a/aa/', '../aab/bb/'),
-    //         array('/a/aab/bb/', '/a/aa', '../aab/bb/'),
-    //         array('/a/aab/bb/', '/a/aa/', '../aab/bb/'),
-    //     );
-
-    //     if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
-    //         $paths[] = array('c:\var\lib/symfony/src/Symfony/', 'c:/var/lib/symfony/', 'src/Symfony/');
-    //     }
-
-    //     return $paths;
-    // }
 
     // public function testMirrorCopiesFilesAndDirectoriesRecursively()
     // {
@@ -895,57 +854,28 @@ class FilesystemTest extends \PHPUnit_Framework_TestCase
     //     $this->assertTrue(is_link($targetPath.DIRECTORY_SEPARATOR.'link1'));
     // }
 
-    // /**
-    //  * @dataProvider providePathsForIsAbsolutePath
-    //  */
-    // public function testIsAbsolutePath($path, $expectedResult)
-    // {
-    //     $result = $this->filesystem->isAbsolutePath($path);
+    public function testDumpFile()
+    {
+        $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo'.DIRECTORY_SEPARATOR.'baz.txt';
 
-    //     $this->assertEquals($expectedResult, $result);
-    // }
+        $this->filesystem->dumpFile($filename, 'bar', 0753);
 
-    // /**
-    //  * @return array
-    //  */
-    // public function providePathsForIsAbsolutePath()
-    // {
-    //     return array(
-    //         array('/var/lib', true),
-    //         array('c:\\\\var\\lib', true),
-    //         array('\\var\\lib', true),
-    //         array('var/lib', false),
-    //         array('../var/lib', false),
-    //         array('', false),
-    //         array(null, false)
-    //     );
-    // }
+        $this->assertFileExists($filename);
+        $this->assertFileContent('bar', $filename);
+        //$this->assertEquals(753, $this->getFilePermissions($filename));
+    }
 
-    // public function testDumpFile()
-    // {
-    //     $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo'.DIRECTORY_SEPARATOR.'baz.txt';
+    public function testDumpFileOverwritesAnExistingFile()
+    {
+        $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo.txt';
 
-    //     $this->filesystem->dumpFile($filename, 'bar', 0753);
+        $this->gridfs->storeBytes('FOO BAR', array('filename' => $filename, 'type' => 'file'));
 
-    //     $this->assertFileExists($filename);
-    //     $this->assertSame('bar', file_get_contents($filename));
+        $this->filesystem->dumpFile($filename, 'bar');
 
-    //     // skip mode check on windows
-    //     if (!defined('PHP_WINDOWS_VERSION_MAJOR')) {
-    //         $this->assertEquals(753, $this->getFilePermissions($filename));
-    //     }
-    // }
-
-    // public function testDumpFileOverwritesAnExistingFile()
-    // {
-    //     $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo.txt';
-    //     file_put_contents($filename, 'FOO BAR');
-
-    //     $this->filesystem->dumpFile($filename, 'bar');
-
-    //     $this->assertFileExists($filename);
-    //     $this->assertSame('bar', file_get_contents($filename));
-    // }
+        $this->assertFileExists($filename);
+        $this->assertFileContent('bar', $filename);
+    }
 
     // /**
     //  * Returns file permissions as three digits (i.e. 755)
