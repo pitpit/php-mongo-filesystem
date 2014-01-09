@@ -15,3 +15,7 @@ License
 Released under the 3-clause BSD licence.
 
 Please read the LICENSE file.
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/pitpit/php-mongo-filesystem/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
